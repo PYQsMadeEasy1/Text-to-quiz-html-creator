@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz Question Converter</title>
+<style>
+  :root{
+    --ink:#1c2321;
+    --paper:#f7f5ef;
+    --panel:#ffffff;
+    --line:#dcd7c9;
+    --accent:#2f6f4f;
+    --accent-dark:#204e37;
+    --warn:#b5501e;
+    --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.5;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:36px 20px 80px;}
+  header{margin-bottom:28px;}
+  h1{font-size:1.7rem;margin:0 0 6px;letter-spacing:-0.01em;}
+  .tag{
+    display:inline-block;font-family:var(--mono);font-size:0.72rem;letter-spacing:0.08em;
+    text-transform:uppercase;color:var(--accent-dark);background:#e7efe6;
+    border:1px solid #c9dcc4;padding:3px 8px;border-radius:4px;margin-bottom:10px;
+  }
+  header p{color:#5a5a52;max-width:640px;margin:0;}
+
+  .step{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:22px 24px;margin-bottom:18px;}
+  .step-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .step-num{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:600;flex-shrink:0;}
+  .step-head h2{font-size:1.05rem;margin:0;}
+  .step-sub{color:#6b6b62;font-size:0.88rem;margin:0 0 14px 36px;}
+
+  .dropzone{margin-left:36px;border:1.5px dashed var(--line);border-radius:8px;padding:20px;
+    text-align:center;cursor:pointer;transition:border-color .15s, background .15s;background:#fcfbf7;}
+  .dropzone:hover, .dropzone.drag{border-color:var(--accent);background:#f1f7ef;}
+  .dropzone input{display:none;}
+  .dz-label{font-size:0.92rem;color:#444;}
+  .dz-label b{color:var(--accent-dark);}
+  .file-chip{margin-top:10px;display:none;align-items:center;gap:8px;font-family:var(--mono);
+    font-size:0.82rem;background:#eef2ea;border:1px solid #cfe0ca;border-radius:6px;padding:6px 10px;color:#274a30;}
+  .file-chip.show{display:inline-flex;}
+  .file-chip .x{cursor:pointer;color:#8a8a80;font-weight:bold;margin-left:4px;}
+  .remembered-badge{
+    font-size:0.68rem;text-transform:uppercase;letter-spacing:0.04em;
+    background:#dcecdc;color:var(--accent-dark);border-radius:4px;padding:2px 6px;margin-left:4px;
+  }
+  .remember-note{margin-left:36px;font-size:0.78rem;color:#8a8a80;margin-top:8px;}
+  .remember-note a{color:var(--accent-dark);cursor:pointer;text-decoration:underline;}
+
+  .settings-grid{margin-left:36px;display:grid;grid-template-columns:2fr 1fr;gap:14px;}
+  .field label{display:block;font-size:0.8rem;color:#5a5a52;margin-bottom:5px;font-weight:600;}
+  .field input{
+    width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:6px;
+    font-size:0.92rem;font-family:inherit;background:#fcfbf7;
+  }
+  .field input:focus{outline:none;border-color:var(--accent);}
+
+  .actions{display:flex;gap:12px;align-items:center;margin-top:22px;}
+  button.primary{background:var(--accent);color:#fff;border:none;padding:12px 22px;font-size:0.95rem;
+    font-weight:600;border-radius:7px;cursor:pointer;transition:background .15s;}
+  button.primary:hover{background:var(--accent-dark);}
+  button.primary:disabled{background:#b7c8bb;cursor:not-allowed;}
+  button.secondary{background:transparent;border:1px solid var(--line);color:var(--ink);
+    padding:11px 18px;border-radius:7px;cursor:pointer;font-size:0.92rem;}
+  button.secondary:hover{border-color:#b7b3a3;}
+
+  .status{margin-top:14px;font-size:0.88rem;padding:10px 14px;border-radius:6px;display:none;}
+  .status.show{display:block;}
+  .status.err{background:#fbeae2;color:#8a3210;border:1px solid #f0c6ac;}
+  .status.ok{background:#eaf4ea;color:#204e37;border:1px solid #c9dcc4;}
+
+  .results{display:none;}
+  .results.show{display:block;}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0 20px;}
+  .stat{background:#fcfbf7;border:1px solid var(--line);border-radius:8px;padding:14px 12px;text-align:center;}
+  .stat .n{font-size:1.5rem;font-weight:700;color:var(--accent-dark);font-family:var(--mono);}
+  .stat .l{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;color:#7a7a70;margin-top:2px;}
+
+  .warn-box{background:#fdf3ea;border:1px solid #eccfa8;border-radius:8px;padding:12px 16px;
+    margin-bottom:16px;font-size:0.85rem;color:#7a4718;display:none;}
+  .warn-box.show{display:block;}
+  .warn-box ul{margin:6px 0 0;padding-left:20px;}
+
+  details{border:1px solid var(--line);border-radius:8px;margin-bottom:14px;background:#fcfbf7;}
+  details summary{padding:12px 16px;cursor:pointer;font-size:0.9rem;font-weight:600;color:var(--accent-dark);}
+  .preview-item{border-top:1px solid var(--line);padding:14px 16px;font-size:0.85rem;}
+  .preview-item .qmeta{font-family:var(--mono);font-size:0.72rem;color:#8a8a80;margin-bottom:6px;
+    text-transform:uppercase;letter-spacing:0.04em;}
+  .preview-item .qtext{margin-bottom:8px;}
+  .preview-item .qtext .context-box{background:#eef2ea;border:1px solid #cfe0ca;border-radius:6px;padding:10px 12px;margin-bottom:8px;}
+  .preview-item table.match-table{border-collapse:collapse;width:100%;font-size:0.82rem;}
+  .preview-item table.match-table th, .preview-item table.match-table td{border:1px solid #cfe0ca;padding:5px 8px;text-align:left;}
+  .preview-item ol{margin:0 0 8px;padding-left:20px;}
+  .preview-item li.correct{color:var(--accent-dark);font-weight:600;}
+  .preview-item .expl{font-size:0.82rem;color:#4a4a42;background:#f5f3ec;border-radius:6px;padding:8px 10px;}
+
+  .download-bar{display:flex;justify-content:space-between;align-items:center;background:#fcfbf7;
+    border:1px solid var(--line);border-radius:8px;padding:16px 20px;}
+  .download-bar .fname{font-family:var(--mono);font-size:0.85rem;color:#555;}
+  footer{margin-top:30px;font-size:0.78rem;color:#9a9a8e;text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="tag">Krishi Sanjeevini · PYQs Made Easy — Internal Tool</span>
+    <h1>Quiz Question Converter</h1>
+    <p>Upload a Gemini-generated question text file and an FLT HTML quiz file. Parses Standard, Complex (statement / assertion-reason / chronological / pairing) and Match-the-Following questions, and rebuilds the quiz file's question data — ready to download. Automatically detects bilingual (English/Kannada) templates and applies the right bullet markers and paired explanations.</p>
+  </header>
+
+  <div class="step">
+    <div class="step-head"><div class="step-num">1</div><h2>Questions text file</h2></div>
+    <p class="step-sub">The raw .txt export (Qn. question, options, correct-answer marker, explanation)</p>
+    <div class="dropzone" id="dzTxt">
+      <input type="file" id="fileTxt" accept=".txt">
+      <div class="dz-label">Drop file here or <b>click to browse</b></div>
+      <div class="file-chip" id="chipTxt"><span></span><span class="x">✕</span></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><div class="step-num">2</div><h2>HTML quiz template</h2></div>
+    <p class="step-sub">The existing FLT quiz .html file whose questions should be replaced</p>
+    <div class="dropzone" id="dzHtml">
+      <input type="file" id="fileHtml" accept=".html,.htm">
+      <div class="dz-label">Drop file here or <b>click to browse</b></div>
+      <div class="file-chip" id="chipHtml"><span></span><span class="x">✕</span></div>
+    </div>
+    <div class="remember-note" id="rememberNote" style="display:none;"></div>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><div class="step-num">3</div><h2>Quiz settings</h2></div>
+    <p class="step-sub">Optional — leave as-is to keep the template's existing values</p>
+    <div class="settings-grid">
+      <div class="field">
+        <label for="inpTopic">Topic name</label>
+        <input type="text" id="inpTopic" placeholder="e.g. General Studies - 99 MCQ Practice Set">
+      </div>
+      <div class="field">
+        <label for="inpTimer">Total time (minutes)</label>
+        <input type="number" id="inpTimer" min="1" placeholder="e.g. 120">
+      </div>
+    </div>
+    <div class="settings-grid" style="margin-top:14px;grid-template-columns:1fr;">
+      <div class="field">
+        <label for="inpFileName">Output file name</label>
+        <input type="text" id="inpFileName" placeholder="leave blank to auto-name from the uploaded HTML file">
+      </div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="primary" id="btnConvert" disabled>Convert Questions</button>
+    <span id="convertHint" style="font-size:0.85rem;color:#8a8a80;">Upload both files to enable</span>
+  </div>
+  <div class="status" id="statusBox"></div>
+
+  <div class="results" id="results">
+    <div class="step" style="margin-top:24px;">
+      <h2 style="margin-top:0;">Conversion Summary</h2>
+      <div class="stat-grid">
+        <div class="stat"><div class="n" id="statTotal">0</div><div class="l">Total Questions</div></div>
+        <div class="stat"><div class="n" id="statStandard">0</div><div class="l">Standard</div></div>
+        <div class="stat"><div class="n" id="statComplex">0</div><div class="l">Complex</div></div>
+        <div class="stat"><div class="n" id="statMatch">0</div><div class="l">Match-the-Following</div></div>
+      </div>
+
+      <div class="warn-box" id="warnBox">
+        <strong>⚠ Needs a manual check</strong>
+        <ul id="warnList"></ul>
+      </div>
+
+      <details>
+        <summary>Preview first 5 converted questions</summary>
+        <div id="previewList"></div>
+      </details>
+
+      <div class="download-bar" style="margin-top:18px;">
+        <div>
+          <div style="font-weight:600;margin-bottom:4px;">Converted HTML ready</div>
+          <div class="fname" id="outFileName">—</div>
+        </div>
+        <button class="primary" id="btnDownload">Download HTML</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>Runs entirely in your browser — no files are uploaded anywhere. The HTML template is remembered on this device (browser local storage) so you don't need to re-upload it every time.</footer>
+</div>
+
+<script>
+/* ============================================================
+   LOCAL STORAGE — remember last uploaded HTML template
+   ============================================================ */
+const LS_HTML_KEY = 'quizConverter_htmlContent';
+const LS_HTML_NAME_KEY = 'quizConverter_htmlFileName';
+
+function rememberHtmlFile(content, name) {
+  try {
+    localStorage.setItem(LS_HTML_KEY, content);
+    localStorage.setItem(LS_HTML_NAME_KEY, name);
+  } catch (e) {
+    console.warn('Could not save HTML template to local storage (it may be too large or storage is full):', e);
+  }
+}
+function forgetHtmlFile() {
+  localStorage.removeItem(LS_HTML_KEY);
+  localStorage.removeItem(LS_HTML_NAME_KEY);
+}
+function loadRememberedHtmlFile() {
+  try {
+    const content = localStorage.getItem(LS_HTML_KEY);
+    const name = localStorage.getItem(LS_HTML_NAME_KEY);
+    if (content && name) return { content, name };
+  } catch (e) { /* ignore */ }
+  return null;
+}
+
+/* ============================================================
+   FILE UPLOAD HANDLING
+   ============================================================ */
+let txtContent = null, htmlContent = null, htmlFileName = 'quiz.html';
+
+function setupDropzone(dzId, inputId, chipId, onLoad) {
+  const dz = document.getElementById(dzId);
+  const input = document.getElementById(inputId);
+  const chip = document.getElementById(chipId);
+
+  dz.addEventListener('click', () => input.click());
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag');
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  input.addEventListener('change', () => { if (input.files.length) handleFile(input.files[0]); });
+
+  function handleFile(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      onLoad(reader.result, file.name);
+      chip.querySelector('span').textContent = file.name;
+      chip.classList.add('show');
+      checkReady();
+    };
+    reader.readAsText(file, 'UTF-8');
+  }
+  chip.querySelector('.x').addEventListener('click', (e) => {
+    e.stopPropagation();
+    chip.classList.remove('show');
+    input.value = '';
+    if (dzId === 'dzTxt') txtContent = null; else { htmlContent = null; forgetHtmlFile(); updateRememberNote(); }
+    checkReady();
+  });
+}
+
+setupDropzone('dzTxt', 'fileTxt', 'chipTxt', (content) => { txtContent = content; });
+setupDropzone('dzHtml', 'fileHtml', 'chipHtml', (content, name) => {
+  htmlContent = content; htmlFileName = name;
+  rememberHtmlFile(content, name);
+  updateRememberNote();
+  populateSettingsFromHtml(content);
+});
+
+function updateRememberNote() {
+  const note = document.getElementById('rememberNote');
+  const remembered = loadRememberedHtmlFile();
+  if (remembered && htmlContent === remembered.content) {
+    note.style.display = 'block';
+    note.innerHTML = `Remembered on this device as <b>${remembered.name}</b>. <a id="forgetLink">Forget this file</a>`;
+    document.getElementById('forgetLink').addEventListener('click', () => {
+      forgetHtmlFile();
+      htmlContent = null;
+      document.getElementById('chipHtml').classList.remove('show');
+      note.style.display = 'none';
+      checkReady();
+    });
+  } else {
+    note.style.display = 'none';
+  }
+}
+
+function checkReady() {
+  const ready = !!txtContent && !!htmlContent;
+  document.getElementById('btnConvert').disabled = !ready;
+  document.getElementById('convertHint').textContent = ready ? 'Ready to convert' : 'Upload both files to enable';
+}
+
+// On page load, restore a remembered HTML template automatically
+window.addEventListener('DOMContentLoaded', () => {
+  const remembered = loadRememberedHtmlFile();
+  if (remembered) {
+    htmlContent = remembered.content;
+    htmlFileName = remembered.name;
+    const chip = document.getElementById('chipHtml');
+    chip.querySelector('span').textContent = remembered.name;
+    chip.classList.add('show');
+    updateRememberNote();
+    populateSettingsFromHtml(remembered.content);
+    checkReady();
+  }
+});
+
+function populateSettingsFromHtml(html) {
+  try {
+    const topicMatch = html.match(/"topic":\s*"((?:[^"\\]|\\.)*)"/);
+    const timerMatch = html.match(/"totalTimeSec":\s*(\d+)/);
+    if (topicMatch) document.getElementById('inpTopic').placeholder = JSON.parse('"' + topicMatch[1] + '"');
+    if (timerMatch) document.getElementById('inpTimer').placeholder = Math.round(parseInt(timerMatch[1], 10) / 60);
+  } catch (e) { /* non-fatal */ }
+}
+
+/* ============================================================
+   QUESTION TEXT PARSER
+   ============================================================ */
+const INVIS = '\u3164'; // ㅤ Hangul filler used as invisible spacer in source text
+const CHECK_RE = /(✅|✔️|✔|✓)/;
+const EX_MARKER_RE = /^\s*(Ex|Ans|Explanation|Solution|Answer)\s*[:\-]\s*/i;
+const CODE_HEADER_RE = /select\s+(your|the)?\s*(correct\s+)?answer|choose\s+the\s+correct|using the (code|options|codes) given below/i;
+
+// Auto-detects whether the uploaded HTML template's EXISTING questions already contain
+// bilingual (English/Kannada) content. Checking for Kannada Unicode characters in the
+// questions data itself -- rather than just CSS/font support -- matters because your
+// templates ship with Kannada font/CSS scaffolding built in even when a given quiz's
+// question content is English-only, so that alone isn't a reliable signal.
+const KANNADA_RANGE_RE = /[\u0C80-\u0CFF]/;
+function detectBilingual(html) {
+  const qIdx = html.indexOf('"questions"');
+  if (qIdx === -1) return false;
+  const lbIdx = html.indexOf('"leaderboard"', qIdx);
+  // Only check inside the actual questions array -- Kannada script can legitimately appear
+  // elsewhere in the file (e.g. multi-language prompts for an AI fact-checker feature) even
+  // when this particular quiz's question content is English-only.
+  const region = lbIdx !== -1 ? html.slice(qIdx, lbIdx) : html.slice(qIdx, qIdx + 20000);
+  return KANNADA_RANGE_RE.test(region);
+}
+
+function stripInvis(s) {
+  return s.split(INVIS).join('').trim();
+}
+
+function parseOptions(lines, coded) {
+  const options = [];
+  let correct = null;
+  for (const raw of lines) {
+    let s = raw.trim();
+    if (!s) continue;
+    if (coded) {
+      const m = s.match(/^(\d+)[.\)]\s*(.*)$/);
+      if (m) s = m[2];
+    } else {
+      s = s.replace(/^[•\-\*]\s*/, '');
+    }
+    const hasCheck = CHECK_RE.test(s);
+    s = s.replace(new RegExp(CHECK_RE.source, 'g'), '').trim();
+    if (hasCheck) correct = options.length;
+    options.push(s);
+  }
+  return { options, correct };
+}
+
+// Generic match-row parser: labels can be letters, numbers, or roman numerals on either side,
+// and any number of rows is supported (table adjusts automatically).
+function parseMatchRows(lines) {
+  const rows = [];
+  const re = /\|\s*\(([^)]{1,6})\)\s*(.+?)\s*\|.*?\|\s*\(([^)]{1,6})\)\s*(.+?)\s*\|/;
+  for (const l of lines) {
+    const m = l.match(re);
+    if (m) rows.push([m[1].trim(), m[2].trim(), m[3].trim(), m[4].trim()]);
+  }
+  return rows;
+}
+
+// Best-effort extraction of column subtitles for a match table, e.g. from an intro like
+// "Match List I (Mughal King) with List II (Tomb Location)". Returns nulls if not found --
+// the table still renders correctly without subtitles.
+function extractListSubtitles(intro) {
+  const m1 = intro.match(/List[\s\-]*I\b[^(]*\(([^)]+)\)/i);
+  const m2 = intro.match(/List[\s\-]*II\b[^(]*\(([^)]+)\)/i);
+  return { subI: m1 ? m1[1].trim() : null, subII: m2 ? m2[1].trim() : null };
+}
+
+function buildMatchHtml(num, intro, rows, closePrompt, bilingual) {
+  const introClean = stripInvis(intro);
+  const bullet = bilingual ? '💠' : '🔸';
+  const { subI, subII } = extractListSubtitles(introClean);
+  const subISpan = subI ? `<span class="list-subtitle">(${subI})</span>` : '';
+  const subIISpan = subII ? `<span class="list-subtitle">(${subII})</span>` : '';
+  const thead = `<thead><tr><th><span class="list-title">【List I】</span>${subISpan}</th><th><span class="list-title">【List II】</span>${subIISpan}</th></tr></thead>`;
+  // rows.map handles any number of rows automatically -- table grows/shrinks with the data
+  const trs = rows.map(r => `<tr><td>${r[0].toUpperCase()}. ${r[1]}</td><td>${r[2].toUpperCase()}. ${r[3]}</td></tr>`).join('');
+  const table = `<table class="match-table">${thead}<tbody>${trs}</tbody></table>`;
+  return { text: `<div class="context-box">Q${num}. ${bullet} ${introClean}<br><br>${table}</div><b>Q${num}.</b> ${closePrompt}`, kind: 'match', rowCount: rows.length };
+}
+
+function buildStatementHtml(num, intro, items, closePrompt, bilingual) {
+  const introClean = stripInvis(intro);
+  const itemsClean = items.map(stripInvis).filter(x => x !== '');
+  const bullet = bilingual ? '⦿ ' : '';
+  const body = `Q${num}. ${bullet}${introClean}<br><br> ` + itemsClean.join('<br> <br> ');
+  return { text: `\n            <div class="context-box">\n                ${body}\n            </div>\n            <b>Q${num}.</b> ${closePrompt}`, kind: 'complex' };
+}
+
+function buildStandardHtml(num, stemLine, bilingual) {
+  const bullet = bilingual ? '⦾ ' : '';
+  return { text: `<b>Q${num}.</b> ${bullet}${stemLine.trim()}`, kind: 'standard' };
+}
+
+// Every explanation pointer goes on its own line (<br> between them), each prefixed
+// with the ➻ marker, instead of being flattened into one long paragraph.
+//
+// Bilingual explanations arrive as one full English block, then " / ", then one full
+// Kannada block -- each block internally marked with ➻ per point, in the same order.
+// Rather than sentence-splitting (which only recognizes Latin capital letters and would
+// mis-split Kannada), pointers are matched up by their ➻ position and paired onto one
+// line each: "➻ English point / Kannada point".
+function buildExplanation(rawLines, bilingual) {
+  let text = rawLines.join('\n');
+  text = text.replace(EX_MARKER_RE, '');
+
+  if (bilingual) {
+    const boundary = text.match(/\|\s*\/\s*/);
+    if (boundary) {
+      const engBlock = text.slice(0, boundary.index);
+      const kanBlock = text.slice(boundary.index + boundary[0].length);
+      const clean = s => s.replace(/\s*\|\s*$/, '').trim();
+      const engSegs = engBlock.split(/(?=➻)/).map(s => clean(s)).filter(s => s !== '');
+      const kanSegs = kanBlock.split(/(?=➻)/).map(s => clean(s)).filter(s => s !== '');
+      if (engSegs.length && engSegs.length === kanSegs.length) {
+        const lines = engSegs.map((e, i) => {
+          const ee = e.replace(/^➻\s*/, '');
+          const kk = kanSegs[i].replace(/^➻\s*/, '');
+          return `➻ ${ee} / ${kk}`;
+        });
+        return { text: lines.join('<br>') + ' |', mismatched: false };
+      }
+      // Pointer counts didn't line up -- keep both full blocks intact rather than
+      // guessing at a pairing, and let the caller flag this question for review.
+      const eJoined = engSegs.join('<br>');
+      const kJoined = kanSegs.join('<br>');
+      return { text: (eJoined ? eJoined + '<br>' : '') + kJoined + ' |', mismatched: true };
+    }
+    // No "| /" boundary found (unexpected for a bilingual file) -- fall through to
+    // the English-only handling below as a safe default.
+  }
+
+  let segments = text.split('\n').flatMap(line => line.split(/(?=➻)/));
+  segments = segments.flatMap(seg => seg.split(/(?<=[.!?])\s+(?=[A-Z➻🔸💡])/));
+  segments = segments.map(s => s.trim()).filter(s => s !== '');
+  segments = segments.map(s => s.replace(/\s*\|\s*$/, '').trim()).filter(s => s !== '');
+  segments = segments.map(s => '➻ ' + s.replace(/^➻\s*/, ''));
+  if (segments.length === 0) return { text: '', mismatched: false };
+  let joined = segments.join('<br>');
+  if (!joined.endsWith('|')) joined = joined + ' |';
+  return { text: joined, mismatched: false };
+}
+
+function parseBlock(num, body, bilingual) {
+  const lines = body.split('\n');
+  let exIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (EX_MARKER_RE.test(lines[i])) { exIdx = i; break; }
+  }
+  let preLines, exLines;
+  if (exIdx === -1) { preLines = lines; exLines = []; }
+  else { preLines = lines.slice(0, exIdx); exLines = lines.slice(exIdx); }
+
+  const explResult = buildExplanation(exLines, bilingual);
+  const explanation = explResult.text;
+
+  // A question is "coded" (needs a statement/context box + separate answer codes) if it has
+  // an explicit arrow marker OR a recognizable "select your answer" style header line.
+  // The emoji marker always wins if present. The text-based fallback only looks at lines
+  // AFTER the first (the first line is always the question's own intro sentence, which can
+  // legitimately contain phrases like "...select the correct answer using the codes given
+  // below" as part of the question wording itself -- that must not be mistaken for a
+  // standalone header). It's also restricted to short, header-like lines to avoid matching
+  // a long statement that merely mentions similar wording.
+  let arrowIdx = preLines.findIndex(l => l.indexOf('👉') !== -1);
+  if (arrowIdx === -1) {
+    arrowIdx = preLines.findIndex((l, idx) => idx > 0 && l.trim().length < 100 && CODE_HEADER_RE.test(l));
+  }
+  const hasCode = arrowIdx !== -1;
+
+  let built, options, correct, lowConfidence = explResult.mismatched;
+
+  if (hasCode) {
+    const stemLines = preLines.slice(0, arrowIdx);
+    const headerLine = preLines[arrowIdx];
+    const optLines = preLines.slice(arrowIdx + 1);
+    const closePrompt = headerLine.replace(/👉\s*/, '').trim().replace(/:$/, '') + ':';
+    const parsed = parseOptions(optLines, true);
+    options = parsed.options; correct = parsed.correct;
+
+    // Match-the-following is identified primarily by successfully parsing >=2 table rows,
+    // not just by the presence of "List I" bracket text -- this catches more header styles.
+    const rows = parseMatchRows(stemLines);
+    if (rows.length >= 2) {
+      const intro = stemLines.find(l => l.trim() !== '' && l.indexOf('|') === -1) || stemLines.find(l => l.trim() !== '') || '';
+      built = buildMatchHtml(num, intro, rows, closePrompt, bilingual);
+    } else {
+      const nonblank = stemLines.filter(l => l.trim() !== '');
+      const intro = nonblank[0] || '';
+      const items = nonblank.slice(1);
+      built = buildStatementHtml(num, intro, items, closePrompt, bilingual);
+      if (items.length === 0) lowConfidence = true;
+    }
+  } else {
+    // Standard type: everything before the option block is the stem (supports multi-line
+    // stems), and the option block is the trailing set of non-blank lines.
+    const nonblank = preLines.filter(l => l.trim() !== '');
+    const stemLine = nonblank[0] || '';
+    const optLines = nonblank.slice(1);
+    const parsed = parseOptions(optLines, false);
+    options = parsed.options; correct = parsed.correct;
+    built = buildStandardHtml(num, stemLine, bilingual);
+  }
+
+  if (correct === null || correct === undefined) { correct = -1; lowConfidence = true; }
+  if (options.length !== 4) lowConfidence = true;
+
+  return {
+    num, text: built.text, kind: built.kind,
+    options, correctIndex: correct, explanation, reference: '', lowConfidence
+  };
+}
+
+function parseQuestionsText(txt, bilingual) {
+  // Accepts "Q1.", "Q1)", "Q1:", "Q 1." style numbering.
+  const re = /^Q\.?\s?(\d+)\s?[.):]\s*/gm;
+  const parts = txt.split(re);
+  const blocks = [];
+  for (let i = 1; i < parts.length; i += 2) {
+    blocks.push([parseInt(parts[i], 10), parts[i + 1]]);
+  }
+  return blocks.map(([num, body]) => parseBlock(num, body, bilingual));
+}
+
+/* ============================================================
+   HTML TEMPLATE SPLICING
+   ============================================================ */
+function buildQuestionsBlock(questions) {
+  const blocks = questions.map(q => {
+    const optsStr = q.options.map(o => '      ' + JSON.stringify(o)).join(',\n');
+    return `  {\n    "text": ${JSON.stringify(q.text)},\n    "options": [\n${optsStr}\n    ],\n    "correctIndex": ${q.correctIndex},\n    "explanation": ${JSON.stringify(q.explanation)},\n    "reference": ""\n  }`;
+  });
+  return '  "questions": [\n' + blocks.join(',\n') + '\n  ],\n';
+}
+
+function buildLeaderboardBlock(questions) {
+  const entries = questions.map((q, i) => `"${i}": {"correct": 0, "total": 0}`).join(', ');
+  return `    "leaderboard": {"rankings": [], "question_stats": {${entries}}}\n`;
+}
+
+function spliceIntoHtml(html, questions, topicOverride, timerMinutesOverride) {
+  const qdIdx = html.indexOf('const quizData');
+  if (qdIdx === -1) throw new Error('Could not find "const quizData" in the uploaded HTML file. This does not look like a compatible FLT quiz template.');
+
+  const qKeyIdx = html.indexOf('"questions"', qdIdx);
+  if (qKeyIdx === -1) throw new Error('Could not find a "questions" array in the quizData object.');
+  const qLineStart = html.lastIndexOf('\n', qKeyIdx) + 1;
+
+  const lbKeyIdx = html.indexOf('"leaderboard"', qKeyIdx);
+  if (lbKeyIdx === -1) throw new Error('Could not find a "leaderboard" object after "questions" in the quizData object.');
+  const lbLineStart = html.lastIndexOf('\n', lbKeyIdx) + 1;
+
+  const closeIdx = html.indexOf('\n};', lbLineStart);
+  if (closeIdx === -1) throw new Error('Could not find the closing "};" for the quizData object.');
+
+  const before = html.slice(0, qLineStart);
+  const after = html.slice(closeIdx); // starts with "\n};"
+
+  const newQuestionsBlock = buildQuestionsBlock(questions);
+  const newLeaderboardBlock = buildLeaderboardBlock(questions);
+
+  let newHtml = before + newQuestionsBlock + newLeaderboardBlock + after;
+
+  // Apply topic / timer overrides within the settings block (only within quizData region).
+  if (topicOverride) {
+    const settingsRegionEnd = newHtml.indexOf('"questions"', qdIdx);
+    const settingsRegion = newHtml.slice(qdIdx, settingsRegionEnd);
+    const newSettingsRegion = settingsRegion.replace(/"topic":\s*"(?:[^"\\]|\\.)*"/, `"topic": ${JSON.stringify(topicOverride)}`);
+    newHtml = newHtml.slice(0, qdIdx) + newSettingsRegion + newHtml.slice(settingsRegionEnd);
+  }
+  if (timerMinutesOverride) {
+    const totalSec = Math.round(timerMinutesOverride * 60);
+    const settingsRegionEnd = newHtml.indexOf('"questions"', qdIdx);
+    const settingsRegion = newHtml.slice(qdIdx, settingsRegionEnd);
+    const newSettingsRegion = settingsRegion.replace(/"totalTimeSec":\s*\d+/, `"totalTimeSec": ${totalSec}`);
+    newHtml = newHtml.slice(0, qdIdx) + newSettingsRegion + newHtml.slice(settingsRegionEnd);
+  }
+
+  // Validate resulting quizData parses as JSON
+  const eqIdx = newHtml.indexOf('=', qdIdx) + 1;
+  const checkClose = newHtml.indexOf('\n};', eqIdx);
+  const objStr = newHtml.slice(eqIdx, checkClose + 2).trim();
+  try {
+    JSON.parse(objStr);
+  } catch (e) {
+    throw new Error('Generated file failed internal validation (' + e.message + '). Please check the source text file formatting near the reported question and try again.');
+  }
+
+  return newHtml;
+}
+
+/* ============================================================
+   PREVIEW RENDERING
+   ============================================================ */
+function renderPreview(questions) {
+  const container = document.getElementById('previewList');
+  container.innerHTML = '';
+  questions.slice(0, 5).forEach(q => {
+    const div = document.createElement('div');
+    div.className = 'preview-item';
+    const kindLabel = q.kind === 'match' ? 'Match the Following' : (q.kind === 'complex' ? 'Complex' : 'Standard');
+    div.innerHTML = `
+      <div class="qmeta">Q${q.num} · ${kindLabel}${q.lowConfidence ? ' · ⚠ low confidence' : ''}</div>
+      <div class="qtext">${q.text}</div>
+      <ol type="A">
+        ${q.options.map((o, i) => `<li class="${i === q.correctIndex ? 'correct' : ''}">${o}${i === q.correctIndex ? ' ✓' : ''}</li>`).join('')}
+      </ol>
+      <div class="expl">${q.explanation.replace(/<br>/g, '<br>')}</div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+/* ============================================================
+   MAIN CONVERT ACTION
+   ============================================================ */
+let convertedHtml = null;
+let convertedFileName = 'converted-quiz.html';
+
+document.getElementById('btnConvert').addEventListener('click', () => {
+  const statusBox = document.getElementById('statusBox');
+  statusBox.className = 'status'; statusBox.textContent = '';
+  document.getElementById('results').classList.remove('show');
+
+  let questions;
+  const bilingual = detectBilingual(htmlContent);
+  try {
+    questions = parseQuestionsText(txtContent, bilingual);
+    if (questions.length === 0) throw new Error('No questions found. Make sure the text file has questions starting with "Q1.", "Q2." etc.');
+  } catch (e) {
+    statusBox.className = 'status err show';
+    statusBox.textContent = 'Error parsing text file: ' + e.message;
+    return;
+  }
+
+  const topicVal = document.getElementById('inpTopic').value.trim();
+  const timerVal = parseFloat(document.getElementById('inpTimer').value);
+
+  let newHtml;
+  try {
+    newHtml = spliceIntoHtml(htmlContent, questions, topicVal || null, isNaN(timerVal) ? null : timerVal);
+  } catch (e) {
+    statusBox.className = 'status err show';
+    statusBox.textContent = 'Error updating HTML template: ' + e.message;
+    return;
+  }
+
+  convertedHtml = newHtml;
+  const customName = document.getElementById('inpFileName').value.trim();
+  let finalName;
+  if (customName) {
+    finalName = customName.replace(/\.html?$/i, '') + '.html';
+  } else {
+    finalName = htmlFileName.replace(/\.html?$/i, '') + '_converted.html';
+  }
+  convertedFileName = finalName;
+
+  const standard = questions.filter(q => q.kind === 'standard').length;
+  const complex_ = questions.filter(q => q.kind === 'complex').length;
+  const match = questions.filter(q => q.kind === 'match').length;
+  document.getElementById('statTotal').textContent = questions.length;
+  document.getElementById('statStandard').textContent = standard;
+  document.getElementById('statComplex').textContent = complex_;
+  document.getElementById('statMatch').textContent = match;
+
+  const bad = questions.filter(q => q.lowConfidence);
+  const warnBox = document.getElementById('warnBox');
+  const warnList = document.getElementById('warnList');
+  warnList.innerHTML = '';
+  if (bad.length) {
+    bad.forEach(q => {
+      const li = document.createElement('li');
+      const parts = [];
+      if (q.options.length !== 4) parts.push(`${q.options.length} option(s) detected`);
+      if (q.correctIndex < 0) parts.push('correct answer NOT found');
+      if (q.options.length === 4 && q.correctIndex >= 0) parts.push('English/Kannada explanation pointer count did not match — check pairing');
+      li.textContent = `Q${q.num} — ${parts.join(', ')} — please verify manually`;
+      warnList.appendChild(li);
+    });
+    warnBox.classList.add('show');
+  } else {
+    warnBox.classList.remove('show');
+  }
+
+  renderPreview(questions);
+  document.getElementById('outFileName').textContent = convertedFileName;
+  document.getElementById('results').classList.add('show');
+
+  statusBox.className = 'status ok show';
+  statusBox.textContent = `Converted ${questions.length} questions successfully.` + (bilingual ? ' Bilingual (English/Kannada) template detected — bullet markers and paired explanations applied.' : '');
+});
+
+document.getElementById('btnDownload').addEventListener('click', () => {
+  if (!convertedHtml) return;
+  const blob = new Blob([convertedHtml], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = convertedFileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+</script>
+</body>
+</html>
